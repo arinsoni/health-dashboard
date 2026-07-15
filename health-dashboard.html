@@ -456,7 +456,7 @@
       <div>
         <span class="eyebrow">Grocery tracker</span>
         <h2>Sorted by day, checked off as you shop.</h2>
-        <p>Bulk staples up top, then what each day needs. Tick items as they hit the cart &mdash; saved in your browser so it&rsquo;s still here next time.</p>
+        <p>Each day shows exactly what it needs, with pantry staples at the bottom. Tick items as they hit the cart &mdash; saved in your browser so it&rsquo;s still here next time.</p>
       </div>
     </div>
     <div class="groc">
@@ -518,7 +518,7 @@ Breakfast: ...</div>
 <script>
 (function(){
   "use strict";
-  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v3", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
+  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v4", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
   var PROFILES = [
     { id:"aditi", name:"Aditi", initial:"Ad", tint:"var(--accent)" },
     { id:"arin",  name:"Arin",  initial:"Ar", tint:"var(--mint)" }
@@ -594,14 +594,14 @@ Breakfast: ...</div>
   function seedGrocery(){
     function mk(list, day){ return list.map(function(t){ return { t:t, day:day, done:false }; }); }
     return [].concat(
-      // Bulk staples used across the week (quantities sized for 2 people, 5 days)
-      mk(["Paneer - 1.5 kg","Milk - 5-6 L","Whole wheat flour (atta) - 1.5 kg","Rice - 1 kg","Mixed dal - 500 g","Curd - 1 kg","Bananas - 6","Peanuts - 250 g","Almonds - 250 g","Ghee - 250 g","Cooking oil - 1 L","Onions","Tomatoes","Ginger","Green chillies","Coriander","Lemon","Spinach","Capsicum","Carrots","Beans","Cauliflower"], "Every day"),
-      // Day-specific items
-      mk(["Rajma - 250 g","Besan - 500 g","Cucumber"], "Wednesday"),
-      mk(["Moong dal - 250 g","Chole - 300 g","Soya chunks - 200 g"], "Thursday"),
-      mk(["Oats - 500 g","Peanut butter","Chia seeds (optional)","Apples - 4"], "Friday"),
-      mk(["Extra mixed vegetables (for pulao)"], "Saturday"),
-      mk(["Poha - 500 g"], "Sunday")
+      // What each day needs (mains sized for 2 people; shared veg listed plainly)
+      mk(["Paneer - 400 g","Besan - 200 g","Rajma - 250 g","Banana - 1","Cucumber","Salad veg"], "Wednesday"),
+      mk(["Moong dal - 250 g","Chole - 300 g","Soya chunks - 200 g","Peanuts","Salad veg"], "Thursday"),
+      mk(["Paneer - 300 g","Oats - 150 g","Peanut butter","Dal - 150 g","Chia seeds (optional)","Apple - 1","Banana - 1","Salad veg"], "Friday"),
+      mk(["Paneer - 300 g","Besan - 200 g","Spinach (palak) - 250 g","Dal - 150 g","Mixed veg (pulao)","Curd - 200 g"], "Saturday"),
+      mk(["Paneer - 200 g","Poha - 200 g","Dal - 150 g","Mixed veg","Curd - 200 g","Banana - 1","Peanuts"], "Sunday"),
+      // Pantry: always-on staples you stock once for the week
+      mk(["Milk - 5-6 L","Whole wheat flour (atta) - 1.5 kg","Rice - 1 kg","Ghee - 250 g","Cooking oil - 1 L","Onions","Tomatoes","Ginger","Green chillies","Coriander","Lemon","Almonds - 250 g","Carrots","Beans","Cauliflower","Salt & spices"], "Pantry")
     );
   }
 
@@ -722,8 +722,8 @@ Breakfast: ...</div>
     if(/rice|oat|pasta|bread|flour|atta|roti|almond|nut|oil|bean|rajma|chana|chickpea|chole|lentil|dal|quinoa|granola|makhana|poha|chocolate|hummus/.test(t)) return "Pantry";
     return "Other";
   }
-  var GROC_ORDER = ["Every day"].concat(DAYS).concat(["Extra"]);
-  var GROC_LABEL = { "Every day":"Every day \u00b7 buy in bulk", "Extra":"Extra (added by you)" };
+  var GROC_ORDER = DAYS.concat(["Pantry","Every day","Extra"]);
+  var GROC_LABEL = { "Pantry":"Pantry \u00b7 stock for the week", "Every day":"Every day \u00b7 buy in bulk", "Extra":"Extra (added by you)" };
   function grocItemRow(g, idx){
     var li=el("li", g.done?"done":"");
     var chk=el("button","check"+(g.done?" on":"")); chk.setAttribute("aria-label","toggle"); chk.innerHTML=g.done?"\u2713":"";
