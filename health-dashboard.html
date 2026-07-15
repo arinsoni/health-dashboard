@@ -528,7 +528,7 @@ Breakfast: ...</div>
 <script>
 (function(){
   "use strict";
-  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v4", eaten:"fresh.eaten.v1", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
+  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v5", eaten:"fresh.eaten.v1", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
   var PROFILES = [
     { id:"aditi", name:"Aditi", initial:"Ad", tint:"var(--accent)" },
     { id:"arin",  name:"Arin",  initial:"Ar", tint:"var(--mint)" }
@@ -661,8 +661,12 @@ Breakfast: ...</div>
   function syncGroceryToMeals(){
     var needed=groceryNeededByEatenMeals(), changed=0;
     state.groc.forEach(function(g,idx){
-      if(needed[idx]){ if(!g.done){ g.done=true; g.auto=true; changed++; } }
-      else if(g.auto){ g.done=false; g.auto=false; changed++; }
+      if(needed[idx]){
+        if(!g.done){ g.done=true; g.auto=true; changed++; }
+        else { g.auto=true; }   // adopt an already-checked item so it can be un-ticked later
+      } else if(g.auto){
+        g.done=false; g.auto=false; changed++;
+      }
     });
     return changed;
   }
