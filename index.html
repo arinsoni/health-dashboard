@@ -270,8 +270,11 @@
   .person { }
   .person + .person { border-left: 1px solid var(--line); padding-left: 22px; }
   @media (max-width: 640px){ .person + .person { border-left: none; padding-left: 0; border-top: 1px solid var(--line); padding-top: 16px; } }
-  .person-name { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 10px; }
+  .person-name { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 10px; }
   .person-name .pf-av { width: 22px; height: 22px; font-size: 9px; box-shadow: none; }
+  .day-edit { margin-left: auto; border: 1px solid var(--line); background: var(--panel); color: var(--ink-mute); width: 28px; height: 24px; border-radius: 7px; cursor: pointer; font-size: 12px; line-height: 1; transition: .15s; flex: none; }
+  .day-edit:hover { border-color: var(--line-strong); color: var(--ink); background: var(--panel-2); }
+  .day-edit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .person-name .pk { color: var(--ink-mute); font-weight: 700; letter-spacing: .04em; font-size: 11px; }
   .person-name .pk b { color: var(--citrus); font-variant-numeric: tabular-nums; }
   .person-name .pk.done { color: var(--accent-deep); }
@@ -456,7 +459,7 @@
       <div>
         <span class="eyebrow">Day 1 &rarr; Day 7</span>
         <h2>This week, both your plates.</h2>
-        <p>Each day shows Aditi&rsquo;s and Arin&rsquo;s meals side by side. <b>Tap a meal once it&rsquo;s eaten</b> to tick it off &mdash; the header shows what&rsquo;s left. Paste a new week anytime to rebuild the board.</p>
+        <p>Each day shows Aditi&rsquo;s and Arin&rsquo;s meals side by side. <b>Tap a meal once it&rsquo;s eaten</b> to tick it off (its ingredients tick off the grocery list too). Use the <b>&#x270E; pencil</b> on any day to edit just that day.</p>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" id="groceryFromWeek">&darr; Build grocery list</button>
@@ -510,9 +513,9 @@
 <div class="modal-back" id="modalBack">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h3 id="modalTitle">Paste the week</h3>
-    <p class="hint">Pick whose week you&rsquo;re editing, then paste in plain text. Start each day with <b>Monday</b>, <b>Tuesday</b>&hellip; (or <b>Day 1</b>, <b>Day 2</b>&hellip;), then one line per meal as <b>Meal: what they&rsquo;re eating</b>. Add <b>(520 kcal)</b> at the end of any line to total it.</p>
+    <p class="hint" id="modalHint">Pick whose week you&rsquo;re editing, then paste in plain text. Start each day with <b>Monday</b>, <b>Tuesday</b>&hellip; (or <b>Day 1</b>, <b>Day 2</b>&hellip;), then one line per meal as <b>Meal: what they&rsquo;re eating</b>. Add <b>(520 kcal)</b> at the end of any line to total it.</p>
     <div class="modal-profiles" id="modalProfiles"></div>
-    <div class="fmt-eg">Monday
+    <div class="fmt-eg" id="fmtEg">Monday
 Breakfast: Veggie omelette & toast (430 kcal)
 Lunch: Rajma with brown rice
 Dinner: Paneer tikka & salad
@@ -524,7 +527,7 @@ Breakfast: ...</div>
     <div class="modal-foot">
       <span class="parse-msg" id="parseMsg"></span>
       <button class="btn btn-ghost" id="modalCancel">Cancel</button>
-      <button class="btn btn-primary" id="modalSave">Update my week</button>
+      <button class="btn btn-primary" id="modalSave">Save</button>
     </div>
   </div>
 </div>
@@ -618,10 +621,32 @@ Breakfast: ...</div>
   }
   function eatenKey(pid, day, meal){ return pid + "|" + day + "|" + meal; }
   function toggleEaten(key){
-    state.eaten[key] = !state.eaten[key];
-    if(!state.eaten[key]) delete state.eaten[key];
+    var nowEaten = !state.eaten[key];
+    state.eaten[key] = nowEaten;
+    if(!nowEaten) delete state.eaten[key];
+    // When a meal is eaten, tick its ingredients off the grocery list too
+    if(nowEaten){
+      var parts=key.split("|"), pid=parts[0], day=parts[1], meal=parts[2];
+      var m = state.plans[pid][day] && state.plans[pid][day][meal];
+      if(m){ var n=tickGroceryForMeal(m[0], day); if(n){ persistGroc(); toast(meal+" done \u2014 ticked "+n+" grocery item"+(n>1?"s":"")); } }
+    }
     save(LS.eaten, state.eaten); stamp();
-    renderWeek();
+    renderWeek(); renderGroc(); renderStats();
+  }
+  // Match a meal's words against grocery item names (that day + pantry) and tick them
+  function tickGroceryForMeal(desc, day){
+    var text=" "+desc.toLowerCase()+" ";
+    var syn=[[/chapati|roti|paratha/,"atta flour"],[/pulao|biryani/,"rice"],[/bhurji|tikka|palak/,"paneer"],[/chilla/,"besan"],[/raita/,"curd"],[/sabzi|vegetable|veggie/,"veg"],[/smoothie|shake/,"milk"]];
+    syn.forEach(function(s){ if(s[0].test(text)) text+=" "+s[1]+" "; });
+    var words={}; text.split(/[^a-z]+/).forEach(function(w){ if(w.length>2) words[w]=1; });
+    var changed=0;
+    state.groc.forEach(function(g){
+      if(g.done) return;
+      if(g.day!==day && g.day!=="Pantry") return;
+      var hit=g.t.toLowerCase().split(/[^a-z]+/).some(function(gw){ return gw.length>2 && words[gw]; });
+      if(hit){ g.done=true; changed++; }
+    });
+    return changed;
   }
 
   function seedGrocery(){
@@ -709,6 +734,10 @@ Breakfast: ...</div>
     if(keys.length && doneN>0){ chip = left===0 ? '<span class="pk done">all done</span>' : '<span class="pk"><b>'+left+'</b> left</span>'; }
     var head=el("div","person-name");
     head.innerHTML='<span class="pf-av" style="background:'+p.tint+'">'+p.initial+'</span>'+p.name+' '+chip;
+    var editBtn=el("button","day-edit"); editBtn.type="button"; editBtn.innerHTML="\u270E";
+    editBtn.title="Edit "+p.name+"'s "+day; editBtn.setAttribute("aria-label", editBtn.title);
+    editBtn.onclick=function(){ openDayModal(day, profile.id); };
+    head.appendChild(editBtn);
     col.appendChild(head);
     keys.forEach(function(m){
       var key=eatenKey(profile.id,day,m);
@@ -895,29 +924,59 @@ Breakfast: ...</div>
     return s.charAt(0).toUpperCase()+s.slice(1);
   }
 
-  /* ---------- Modal ---------- */
-  var editingProfile = "aditi";
+  /* ---------- Modal (whole week OR a single day) ---------- */
+  var editingProfile = "aditi", modalMode = "week", editingDay = null;
+  function dayToText(pid, day){
+    var d=state.plans[pid][day]||{};
+    return mealKeys(d).map(function(m){
+      var l=m+": "+d[m][0];
+      if(typeof d[m][1]==="number" && d[m][1]>0) l+=" ("+d[m][1]+" kcal)";
+      return l;
+    }).join("\n");
+  }
+  function loadModalText(){
+    $("#planText").value = modalMode==="day" ? dayToText(editingProfile, editingDay) : planToText(state.plans[editingProfile]);
+    $("#parseMsg").textContent="";
+  }
   function renderModalProfiles(){
     var wrap=$("#modalProfiles"); wrap.innerHTML="";
     PROFILES.forEach(function(p){
       var b=el("button", p.id===editingProfile?"active":"");
       b.type="button";
       b.innerHTML='<span class="pf-av" style="background:'+p.tint+'">'+p.initial+'</span>'+p.name;
-      b.onclick=function(){ editingProfile=p.id; renderModalProfiles(); $("#planText").value=planToText(state.plans[editingProfile]); $("#parseMsg").textContent=""; };
+      b.onclick=function(){ editingProfile=p.id; renderModalProfiles(); loadModalText(); };
       wrap.appendChild(b);
     });
   }
-  function openModal(profile){
-    editingProfile = profile || "aditi";
+  function setModalUI(){
+    if(modalMode==="day"){
+      $("#modalTitle").textContent = "Edit "+editingDay;
+      $("#modalHint").innerHTML = "Editing just <b>"+editingDay+"</b> for the selected person. One line per meal, e.g. <b>Dinner: paneer bhurji + bhindi sabzi</b>. Add <b>(520 kcal)</b> to total it. Leave it blank to clear the day.";
+      $("#fmtEg").style.display = "none";
+      $("#planText").placeholder = "Breakfast: ...\nLunch: ...\nDinner: ...";
+    } else {
+      $("#modalTitle").textContent = "Paste / edit the week";
+      $("#modalHint").innerHTML = "Pick whose week you\u2019re editing, then paste plain text. Start each day with <b>Monday</b>\u2026 (or <b>Day 1</b>\u2026), then one line per meal as <b>Meal: what they\u2019re eating</b>.";
+      $("#fmtEg").style.display = "";
+      $("#planText").placeholder = "Paste your week here\u2026";
+    }
     renderModalProfiles();
-    $("#planText").value=planToText(state.plans[editingProfile]);
-    $("#parseMsg").textContent="";
-    $("#modalBack").classList.add("open");
-    $("#planText").focus();
+    loadModalText();
   }
+  function openModal(profile){ modalMode="week"; editingDay=null; editingProfile=profile||"aditi"; setModalUI(); $("#modalBack").classList.add("open"); $("#planText").focus(); }
+  function openDayModal(day, profile){ modalMode="day"; editingDay=day; editingProfile=profile||"aditi"; setModalUI(); $("#modalBack").classList.add("open"); $("#planText").focus(); }
   function closeModal(){ $("#modalBack").classList.remove("open"); }
+
   function saveModal(){
     var txt=$("#planText").value;
+    if(modalMode==="day"){
+      var dayObj=parseDayMeals(txt);
+      state.plans[editingProfile][editingDay]=dayObj;
+      save(LS.plan + "." + editingProfile, state.plans[editingProfile]); stamp();
+      closeModal(); renderWeek(); renderStats();
+      toast(profileById(editingProfile).name+"'s "+editingDay+" updated");
+      return;
+    }
     var res=parsePlan(txt);
     if(res.days===0 || res.meals===0){
       var msg=$("#parseMsg"); msg.className="parse-msg err";
@@ -929,6 +988,20 @@ Breakfast: ...</div>
     closeModal();
     renderWeek(); renderStats(); renderPlate();
     toast(profileById(editingProfile).name+"'s week updated \u2014 "+res.days+" days, "+res.meals+" meals");
+  }
+  function parseDayMeals(text){
+    var day={};
+    text.split(/\r?\n/).forEach(function(raw){
+      raw=raw.trim(); if(!raw) return;
+      var mm=raw.match(/^([A-Za-z ]+?)\s*[:\-]\s*(.+)$/);
+      if(!mm) return;
+      var name=normalizeMeal(mm[1]); var desc=mm[2].trim(); var kcal=0;
+      var km=desc.match(/\(?\s*(\d{2,4})\s*k?cal\s*\)?/i);
+      if(km){ kcal=parseInt(km[1],10); desc=desc.replace(km[0],"").replace(/\(\s*\)/,"").trim(); }
+      desc=desc.replace(/[,\s]+$/,"");
+      if(desc) day[name]=[desc, kcal];
+    });
+    return day;
   }
 
   /* ---------- Plate macro from week (visual only, stays balanced-plate model) ---------- */
