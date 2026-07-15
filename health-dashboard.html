@@ -265,13 +265,20 @@
   .person-name { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 10px; }
   .person-name .pf-av { width: 22px; height: 22px; font-size: 9px; box-shadow: none; }
   .person-name .pk { color: var(--ink-mute); font-weight: 700; letter-spacing: .04em; font-size: 11px; }
-  .person-name .pk b { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  .meal { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 7px 4px; border-top: 1px solid var(--line); }
+  .person-name .pk b { color: var(--citrus); font-variant-numeric: tabular-nums; }
+  .person-name .pk.done { color: var(--accent-deep); }
+  :root[data-theme="dark"] .person-name .pk.done { color: var(--accent); }
+  .meal { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 7px 4px; border-top: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: background .15s, opacity .15s; }
+  .meal[role="button"]:hover { background: var(--panel-2); }
+  .meal[role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .meal:first-of-type { border-top: none; }
   .meal .mi { font-size: 14px; opacity: .85; }
   .meal .ml { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-mute); }
   .meal .md { font-size: 13.5px; color: var(--ink); line-height: 1.4; }
   .meal .md.empty { color: var(--ink-mute); font-style: italic; }
+  .meal.eaten { opacity: .55; }
+  .meal.eaten .md { text-decoration: line-through; }
+  .meal.eaten .mi { color: var(--accent); opacity: 1; }
 
   /* ---------- Grocery ---------- */
   .groc { display: grid; grid-template-columns: 300px 1fr; gap: 22px; }
@@ -440,7 +447,7 @@
       <div>
         <span class="eyebrow">Day 1 &rarr; Day 7</span>
         <h2>This week, both your plates.</h2>
-        <p>Each day shows Aditi&rsquo;s and Arin&rsquo;s meals side by side. When next week lands, paste it in for either of you and this board rebuilds itself.</p>
+        <p>Each day shows Aditi&rsquo;s and Arin&rsquo;s meals side by side. <b>Tap a meal once it&rsquo;s eaten</b> to tick it off &mdash; the header shows what&rsquo;s left. Paste a new week anytime to rebuild the board.</p>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" id="groceryFromWeek">&darr; Build grocery list</button>
@@ -518,7 +525,7 @@ Breakfast: ...</div>
 <script>
 (function(){
   "use strict";
-  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v4", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
+  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v4", eaten:"fresh.eaten.v1", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
   var PROFILES = [
     { id:"aditi", name:"Aditi", initial:"Ad", tint:"var(--accent)" },
     { id:"arin",  name:"Arin",  initial:"Ar", tint:"var(--mint)" }
@@ -588,8 +595,25 @@ Breakfast: ...</div>
       aditi: load(LS.plan + ".aditi", null) || defaultPlan("aditi"),
       arin:  load(LS.plan + ".arin",  null) || defaultPlan("arin")
     },
-    groc: load(LS.groc, null) || seedGrocery()   // shared list \u2014 they live together
+    groc: load(LS.groc, null) || seedGrocery(),  // shared list \u2014 they live together
+    eaten: load(LS.eaten, null) || seedEaten()   // which meals are already eaten
   };
+
+  // Which meals are already done. Wednesday: only dinner left for both.
+  function seedEaten(){
+    return {
+      "arin|Wednesday|Breakfast": true,
+      "arin|Wednesday|Lunch": true,
+      "aditi|Wednesday|Brunch": true
+    };
+  }
+  function eatenKey(pid, day, meal){ return pid + "|" + day + "|" + meal; }
+  function toggleEaten(key){
+    state.eaten[key] = !state.eaten[key];
+    if(!state.eaten[key]) delete state.eaten[key];
+    save(LS.eaten, state.eaten); stamp();
+    renderWeek();
+  }
 
   function seedGrocery(){
     function mk(list, day){ return list.map(function(t){ return { t:t, day:day, done:false }; }); }
@@ -669,16 +693,23 @@ Breakfast: ...</div>
     var p=profileById(profile.id);
     var d=state.plans[profile.id][day]||{};
     var col=el("div","person");
-    var cals=dayCalories(state.plans[profile.id], day);
-    var head=el("div","person-name");
-    head.innerHTML='<span class="pf-av" style="background:'+p.tint+'">'+p.initial+'</span>'+
-      p.name+' <span class="pk">'+(cals?'<b class="num">'+cals.toLocaleString()+'</b> kcal':'')+'</span>';
-    col.appendChild(head);
     var keys=mealKeys(d);
+    var doneN=keys.filter(function(m){ return state.eaten[eatenKey(profile.id,day,m)]; }).length;
+    var left=keys.length-doneN;
+    var chip="";
+    if(keys.length && doneN>0){ chip = left===0 ? '<span class="pk done">all done</span>' : '<span class="pk"><b>'+left+'</b> left</span>'; }
+    var head=el("div","person-name");
+    head.innerHTML='<span class="pf-av" style="background:'+p.tint+'">'+p.initial+'</span>'+p.name+' '+chip;
+    col.appendChild(head);
     keys.forEach(function(m){
-      var row=el("div","meal");
-      row.innerHTML='<div class="mi">'+(MEAL_ICON[m]||"\u2022")+'</div>'+
+      var key=eatenKey(profile.id,day,m);
+      var done=!!state.eaten[key];
+      var row=el("div","meal"+(done?" eaten":"")); row.setAttribute("role","button"); row.tabIndex=0;
+      row.title = done ? "Tap to mark not eaten" : "Tap when eaten";
+      row.innerHTML='<div class="mi">'+(done?"\u2713":(MEAL_ICON[m]||"\u2022"))+'</div>'+
         '<div><div class="ml">'+escapeHtml(m)+'</div><div class="md">'+escapeHtml(d[m][0])+'</div></div>';
+      row.onclick=function(){ toggleEaten(key); };
+      row.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggleEaten(key); } };
       col.appendChild(row);
     });
     if(!keys.length){
