@@ -615,27 +615,54 @@ Breakfast: ...</div>
     var nowEaten = !state.eaten[key];
     state.eaten[key] = nowEaten;
     if(!nowEaten) delete state.eaten[key];
-    // When a meal is eaten, tick its ingredients off the grocery list too
-    if(nowEaten){
-      var parts=key.split("|"), pid=parts[0], day=parts[1], meal=parts[2];
-      var m = state.plans[pid][day] && state.plans[pid][day][meal];
-      if(m){ var n=tickGroceryForMeal(m[0], day); if(n){ persistGroc(); toast(meal+" done \u2014 ticked "+n+" grocery item"+(n>1?"s":"")); } }
-    }
+    var n = syncGroceryToMeals();   // two-way: keep grocery in step with what's eaten
+    persistGroc();
     save(LS.eaten, state.eaten); stamp();
     renderWeek(); renderGroc(); renderStats();
+    if(n){ toast((nowEaten?"Ticked off ":"Restored ")+n+" grocery item"+(n>1?"s":"")); }
   }
-  // Match a meal's words against grocery item names (that day + pantry) and tick them
-  function tickGroceryForMeal(desc, day){
+  // Filler words that shouldn't drive ingredient matching
+  var MEAL_STOP = {green:1,tea:1,cup:1,cups:1,handful:1,small:1,bowl:1,big:1,fresh:1,mixed:1,extra:1,cooked:1,tbsp:1,tsp:1,and:1,with:1,for:1,the:1,sauteed:1,homemade:1,masala:1};
+  // Words a meal "uses" (with a few cooking synonyms so chapati->atta, tikka->paneer, etc.)
+  function mealWords(desc){
     var text=" "+desc.toLowerCase()+" ";
-    var syn=[[/chapati|roti|paratha/,"atta flour"],[/pulao|biryani/,"rice"],[/bhurji|tikka|palak/,"paneer"],[/chilla/,"besan"],[/raita/,"curd"],[/sabzi|vegetable|veggie/,"veg"],[/smoothie|shake/,"milk"]];
+    var syn=[[/chapati|roti|paratha/,"atta flour"],[/pulao|biryani/,"rice"],[/bhurji|tikka|palak/,"paneer"],[/chilla/,"besan"],[/raita/,"curd"],[/sabzi|vegetable|veggie/,"veg salad"],[/smoothie|shake/,"milk"]];
     syn.forEach(function(s){ if(s[0].test(text)) text+=" "+s[1]+" "; });
-    var words={}; text.split(/[^a-z]+/).forEach(function(w){ if(w.length>2) words[w]=1; });
-    var changed=0;
-    state.groc.forEach(function(g){
-      if(g.done) return;
-      if(g.day!==day && g.day!=="Pantry") return;
-      var hit=g.t.toLowerCase().split(/[^a-z]+/).some(function(gw){ return gw.length>2 && words[gw]; });
-      if(hit){ g.done=true; changed++; }
+    var words=[]; text.split(/[^a-z]+/).forEach(function(w){ if(w.length>2 && !MEAL_STOP[w]) words.push(w); });
+    return words;
+  }
+  // Does grocery item name share an ingredient word with the meal (exact, or plural prefix)?
+  function itemMatchesMeal(itemName, words){
+    var gwords=itemName.toLowerCase().split(/[^a-z]+/).filter(function(w){ return w.length>2 && !MEAL_STOP[w]; });
+    return gwords.some(function(gw){
+      return words.some(function(mw){
+        if(gw===mw) return true;
+        return gw.length>=4 && mw.length>=4 && (gw.indexOf(mw)===0 || mw.indexOf(gw)===0); // banana/bananas, chilli/chillies
+      });
+    });
+  }
+  // Which grocery indices are needed by meals currently marked eaten
+  function groceryNeededByEatenMeals(){
+    var needed={};
+    Object.keys(state.eaten).forEach(function(k){
+      if(!state.eaten[k]) return;
+      var parts=k.split("|"), pid=parts[0], day=parts[1], meal=parts[2];
+      var m = state.plans[pid] && state.plans[pid][day] && state.plans[pid][day][meal];
+      if(!m) return;
+      var words=mealWords(m[0]);
+      state.groc.forEach(function(g,idx){
+        if(g.day!==day && g.day!=="Pantry") return;
+        if(itemMatchesMeal(g.t, words)) needed[idx]=true;
+      });
+    });
+    return needed;
+  }
+  // Auto-tick items needed by eaten meals; un-tick auto items no longer needed. Manual ticks untouched.
+  function syncGroceryToMeals(){
+    var needed=groceryNeededByEatenMeals(), changed=0;
+    state.groc.forEach(function(g,idx){
+      if(needed[idx]){ if(!g.done){ g.done=true; g.auto=true; changed++; } }
+      else if(g.auto){ g.done=false; g.auto=false; changed++; }
     });
     return changed;
   }
@@ -1067,6 +1094,7 @@ Breakfast: ...</div>
   $("#groceryFromWeek").onclick=function(){ buildGroceryFromWeek(); document.getElementById("grocery").scrollIntoView({behavior:reduce?"auto":"smooth"}); };
 
   /* ---------- Init ---------- */
+  if(syncGroceryToMeals()) persistGroc();   // reflect already-eaten meals in the grocery list
   renderHands(); renderPortions();
   renderWeek(); renderGroc(); renderStats(); renderPlate();
 })();
