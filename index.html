@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Fresh — a shared vegetarian + egg health dashboard for Aditi & Arin.">
+<meta name="description" content="Fresh - a shared vegetarian health dashboard for Aditi & Arin.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%97%3C/text%3E%3C/svg%3E">
 <title>Fresh &mdash; Health Dashboard</title>
@@ -209,6 +209,18 @@
   .hand-item .sub { font-size: 12.5px; color: var(--ink-mute); }
   .hand-item .amt { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
+  /* Portion difference: Arin vs Aditi */
+  .pcmp-head { display: flex; align-items: center; font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 8px; }
+  .pcmp-tag { width: 11px; height: 11px; border-radius: 3px; display: inline-block; margin-right: 7px; }
+  .pcmp-row { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: center; padding: 9px 4px; border-top: 1px solid var(--line); }
+  .pcmp-row:first-child { border-top: none; }
+  .pcmp-food { font-size: 13px; font-weight: 700; }
+  .pcmp-bars { display: grid; gap: 6px; }
+  .pcmp-bar { display: flex; align-items: center; gap: 10px; }
+  .pcmp-track { flex: 1; height: 15px; border-radius: 5px; background: var(--panel-2); overflow: hidden; }
+  .pcmp-fill { height: 100%; border-radius: 5px; transition: width .5s cubic-bezier(.2,.8,.2,1); }
+  .pcmp-amt { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); min-width: 74px; font-variant-numeric: tabular-nums; }
+
   /* Comparator */
   .comp { padding: 20px 22px 24px; perspective: 900px; }
   .comp-controls { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -375,16 +387,16 @@
   <!-- HERO -->
   <div class="hero">
     <div>
-      <span class="eyebrow">Aditi &amp; Arin &middot; Vegetarian + egg</span>
+      <span class="eyebrow">Aditi &amp; Arin &middot; Vegetarian</span>
       <h1>Eat by the <span class="accent">plate</span>,<br>not the guesswork.</h1>
-      <p class="lede">One week, both your plates side by side. Portion sizes you can picture and a shared grocery run that plans itself. Paste next week anytime and it all updates.</p>
+      <p class="lede">One week, both your plates side by side. Same lunch and dinner, portioned for each of you, plus a grocery run that plans itself. Paste next week anytime and it all updates.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#week">See this week</a>
         <button class="btn btn-ghost" id="editWeekBtn">&#x270E; Paste next week</button>
       </div>
       <div class="stat-row">
-        <div class="stat"><div class="k num" id="statCalsA">&mdash;</div><div class="l">Aditi &middot; kcal/day</div></div>
-        <div class="stat"><div class="k num" id="statCalsB">&mdash;</div><div class="l">Arin &middot; kcal/day</div></div>
+        <div class="stat"><div class="k num" id="statCalsA">&mdash;</div><div class="l">Aditi &middot; meals a day</div></div>
+        <div class="stat"><div class="k num" id="statCalsB">&mdash;</div><div class="l">Arin &middot; meals a day</div></div>
         <div class="stat"><div class="k num" id="statGroc">&mdash;</div><div class="l">Grocery items left</div></div>
       </div>
     </div>
@@ -409,21 +421,20 @@
     <div class="sec-head">
       <div>
         <span class="eyebrow">Portion differences</span>
-        <h2>Know a serving without a scale.</h2>
-        <p>Use your hand as a portable measuring cup, then compare any two foods to see how their real serving sizes and calories stack up.</p>
+        <h2>Same food, different plate.</h2>
+        <p>Lunch and dinner are cooked once for both of you &mdash; only the portions change. Here&rsquo;s roughly how much goes on each plate, plus a hand guide so you never need a scale.</p>
       </div>
     </div>
     <div class="portion-grid">
       <div class="card" style="padding:14px">
         <div class="hand-list" id="handList"></div>
       </div>
-      <div class="card comp">
-        <div class="comp-controls">
-          <select class="food" id="foodA" aria-label="First food"></select>
-          <select class="food" id="foodB" aria-label="Second food"></select>
+      <div class="card" style="padding:18px 20px">
+        <div class="pcmp-head">
+          <span class="pcmp-tag" style="background:var(--mint)"></span> Arin
+          <span class="pcmp-tag" style="background:var(--accent); margin-left:16px"></span> Aditi
         </div>
-        <div class="bars" id="bars"></div>
-        <div class="comp-note" id="compNote"></div>
+        <div class="pcmp" id="pcmp"></div>
       </div>
     </div>
   </section>
@@ -512,15 +523,16 @@ Breakfast: ...</div>
 <script>
 (function(){
   "use strict";
-  var LS = { plan:"fresh.plan.v1", groc:"fresh.groc.v1", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
+  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v2", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
   var PROFILES = [
     { id:"aditi", name:"Aditi", initial:"Ad", tint:"var(--accent)" },
     { id:"arin",  name:"Arin",  initial:"Ar", tint:"var(--mint)" }
   ];
   var DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   var DOW  = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
-  var MEAL_ICON = { Breakfast:"\u2600", Lunch:"\u{1F957}", Dinner:"\u{1F372}", Snack:"\u{1F34E}" };
-  var MEAL_ORDER = ["Breakfast","Lunch","Dinner","Snack"];
+  var MEAL_ICON = { Breakfast:"\u2600", Brunch:"\u{1F963}", Lunch:"\u{1F957}", Dinner:"\u{1F372}", Snack:"\u{1F34E}" };
+  var MEAL_ORDER = ["Breakfast","Brunch","Lunch","Dinner","Snack"];
+  function mealKeys(d){ return d ? Object.keys(d).filter(function(k){ return d[k] && d[k][0]; }) : []; }
 
   function $(s){ return document.querySelector(s); }
   function el(t, c){ var e=document.createElement(t); if(c) e.className=c; return e; }
@@ -530,50 +542,40 @@ Breakfast: ...</div>
 
   /* ---------- Portion / food data ---------- */
   var HAND = [
-    { g:"\u{1F590}", n:"Protein", s:"eggs, paneer, tofu, dal", a:"1 palm", col:"var(--citrus)" },
-    { g:"\u270A", n:"Vegetables", s:"spinach, broccoli, peppers", a:"1 fist", col:"var(--accent)" },
-    { g:"\u{1F932}", n:"Carbs", s:"rice, roti, oats", a:"1 cupped hand", col:"var(--mint)" },
-    { g:"\u{1F44D}", n:"Fats", s:"ghee, oil, nut butter", a:"1 thumb", col:"var(--rose)" }
+    { g:"\u{1F590}", n:"Protein", s:"paneer, dal, soya, curd", a:"1 palm", col:"var(--citrus)" },
+    { g:"\u270A", n:"Vegetables", s:"spinach, cauliflower, beans", a:"1 fist", col:"var(--accent)" },
+    { g:"\u{1F932}", n:"Carbs", s:"rice, roti, oats, poha", a:"1 cupped hand", col:"var(--mint)" },
+    { g:"\u{1F44D}", n:"Fats", s:"ghee, peanut butter, almonds", a:"1 thumb", col:"var(--rose)" }
   ];
-  // calories per typical serving + serving description
-  var FOODS = [
-    { n:"Paneer", kcal:265, serv:"1 palm \u00B7 100g", col:"var(--citrus)" },
-    { n:"Tofu (firm)", kcal:145, serv:"1 palm \u00B7 100g", col:"var(--citrus)" },
-    { n:"Eggs", kcal:143, serv:"2 large \u00B7 100g", col:"var(--citrus)" },
-    { n:"Greek yogurt", kcal:100, serv:"1 cup \u00B7 170g", col:"var(--citrus)" },
-    { n:"Cottage cheese", kcal:98, serv:"1 cup \u00B7 100g", col:"var(--citrus)" },
-    { n:"Dal / lentils (cooked)", kcal:116, serv:"1 cupped hand \u00B7 100g", col:"var(--accent)" },
-    { n:"Rajma (cooked)", kcal:127, serv:"1 cupped hand \u00B7 100g", col:"var(--accent)" },
-    { n:"Chickpeas (cooked)", kcal:164, serv:"1 cupped hand \u00B7 100g", col:"var(--accent)" },
-    { n:"White rice (cooked)", kcal:205, serv:"1 cupped hand \u00B7 158g", col:"var(--mint)" },
-    { n:"Roti (whole wheat)", kcal:120, serv:"1 medium \u00B7 40g", col:"var(--mint)" },
-    { n:"Oats (dry)", kcal:150, serv:"\u00BD cup \u00B7 40g", col:"var(--mint)" },
-    { n:"Broccoli", kcal:55, serv:"1 fist \u00B7 150g", col:"var(--accent)" },
-    { n:"Avocado", kcal:240, serv:"1 whole \u00B7 150g", col:"var(--accent)" },
-    { n:"Almonds", kcal:170, serv:"1 thumb \u00D72 \u00B7 28g", col:"var(--rose)" },
-    { n:"Banana", kcal:105, serv:"1 medium \u00B7 118g", col:"var(--mint)" },
-    { n:"Milk (full)", kcal:150, serv:"1 cup \u00B7 240ml", col:"var(--citrus)" }
+  // Your real portions \u2014 same food, different plate (Arin vs Aditi)
+  var PORTIONS = [
+    { food:"Chapatis",     arin:"3",       aditi:"1-2",       av:3,   dv:1.5 },
+    { food:"Rice",         arin:"1 cup",   aditi:"1/2 cup",   av:1,   dv:0.5 },
+    { food:"Paneer",       arin:"150-180g",aditi:"80-100g",   av:165, dv:90  },
+    { food:"Dal / rajma",  arin:"2 cups",  aditi:"3/4-1 cup", av:2,   dv:0.9 },
+    { food:"Vegetables",   arin:"1-1.5 cups", aditi:"2 cups", av:1.25,dv:2   },
+    { food:"Milk",         arin:"500 ml",  aditi:"200 ml",    av:500, dv:200 },
+    { food:"Fruit",        arin:"1 banana",aditi:"apple/small", av:1, dv:1   },
+    { food:"Ghee",         arin:"2 tsp",   aditi:"1/2-1 tsp", av:2,   dv:0.75 }
   ];
 
-  /* ---------- Default plans (vegetarian + egg) ---------- */
+  /* ---------- Default plans (vegetarian) \u2014 Wed to Sun; Mon/Tue left open ---------- */
   function defaultPlan(profile){
+    // Aditi: Brunch + Dinner (lunch & dinner dishes shared with Arin, smaller portions)
     var aditi = {
-      Monday:    { Breakfast:["Veggie omelette & multigrain toast",430], Lunch:["Rajma with brown rice",540], Dinner:["Paneer tikka & green salad",520], Snack:["Greek yogurt & berries",150] },
-      Tuesday:   { Breakfast:["Masala oats with veggies",380], Lunch:["Chickpea & quinoa bowl",520], Dinner:["Palak paneer & 2 rotis",560], Snack:["Boiled eggs & fruit",180] },
-      Wednesday: { Breakfast:["Greek yogurt, granola & banana",400], Lunch:["Dal, rice & sauteed veg",510], Dinner:["Grilled paneer wrap & salad",540], Snack:["Handful of almonds",170] },
-      Thursday:  { Breakfast:["Spinach & cheese egg scramble",420], Lunch:["Rajma masala & jeera rice",560], Dinner:["Tofu & veg stir-fry",500], Snack:["Cottage cheese & fruit",150] },
-      Friday:    { Breakfast:["Banana-oat smoothie",380], Lunch:["Paneer bhurji & 2 rotis",550], Dinner:["Veg pulao & raita",520], Snack:["Roasted chana",160] },
-      Saturday:  { Breakfast:["Veg omelette & avocado toast",470], Lunch:["Chole with brown rice",560], Dinner:["Homemade veg pizza & salad",620], Snack:["Dark chocolate & nuts",180] },
-      Sunday:    { Breakfast:["Egg & veg paratha",470], Lunch:["Big garden salad with feta",440], Dinner:["Tofu tacos",520], Snack:["Fruit & yogurt",160] }
+      Wednesday: { Brunch:["2 paneer besan chillas (80g paneer) + cucumber salad + green tea",0], Dinner:["1 chapati + 3/4 cup rajma + vegetables",0] },
+      Thursday:  { Brunch:["2 moong dal chillas + salad",0], Dinner:["1 chapati + 1 cup soya chunk curry + vegetables",0] },
+      Friday:    { Brunch:["Oats (40g) cooked in milk + 1 tsp chia seeds + apple",0], Dinner:["100g paneer tikka + sauteed vegetables",0] },
+      Saturday:  { Brunch:["2 besan chillas + salad",0], Dinner:["100g palak paneer + 1 chapati + vegetables",0] },
+      Sunday:    { Brunch:["Small bowl vegetable poha + green tea",0], Dinner:["1 cup dal + mixed vegetables + 1 chapati",0] }
     };
+    // Arin: Breakfast + Lunch + Dinner (quick breakfast he makes himself)
     var arin = {
-      Monday:    { Breakfast:["Scrambled eggs & avocado toast",450], Lunch:["Paneer wrap & greens",510], Dinner:["Tofu veg stir-fry with rice",540], Snack:["Greek yogurt",120] },
-      Tuesday:   { Breakfast:["Peanut butter banana oats",440], Lunch:["Rajma bowl with rice",560], Dinner:["Palak paneer & 2 rotis",560], Snack:["Boiled eggs",140] },
-      Wednesday: { Breakfast:["Cheese & veg omelette",430], Lunch:["Quinoa chickpea salad",520], Dinner:["Dal makhani & jeera rice",580], Snack:["Almonds & fruit",180] },
-      Thursday:  { Breakfast:["Protein smoothie: milk, oats, banana",400], Lunch:["Veg biryani & raita",600], Dinner:["Grilled paneer & salad",500], Snack:["Cottage cheese & berries",150] },
-      Friday:    { Breakfast:["Masala egg bhurji & toast",460], Lunch:["Chole with brown rice",560], Dinner:["Veg pasta with cheese",620], Snack:["Roasted makhana",150] },
-      Saturday:  { Breakfast:["Pancakes with fruit & yogurt",480], Lunch:["Falafel & hummus wrap",540], Dinner:["Paneer butter masala & 2 rotis",640], Snack:["Trail mix",180] },
-      Sunday:    { Breakfast:["Eggs, beans & toast",470], Lunch:["Rajma chawal",520], Dinner:["Veg fajita bowl",560], Snack:["Fruit & nuts",160] }
+      Wednesday: { Breakfast:["3 paneer besan chillas (150g paneer) + 250ml milk + 1 banana",0], Lunch:["3 chapatis + 2 cups rajma + 1 cup rice + salad",0], Dinner:["3 chapatis + paneer bhurji (150g) + vegetables",0] },
+      Thursday:  { Breakfast:["3 moong dal chillas + 250ml milk + handful peanuts",0], Lunch:["3 chapatis + chole + 1 cup rice + salad",0], Dinner:["3 chapatis + soya chunk curry + vegetables",0] },
+      Friday:    { Breakfast:["Oats (60g) cooked in milk + 2 tbsp peanut butter + 1 banana",0], Lunch:["Dal + 3 chapatis + 1 cup rice + salad",0], Dinner:["Paneer tikka (180g) + 3 chapatis",0] },
+      Saturday:  { Breakfast:["3 besan chillas stuffed with paneer + 250ml milk",0], Lunch:["Vegetable pulao + dal + raita",0], Dinner:["Palak paneer + 3 chapatis",0] },
+      Sunday:    { Breakfast:["Vegetable poha + 250ml milk + 1 banana + handful peanuts",0], Lunch:["Paneer pulao + raita + salad",0], Dinner:["Dal + mixed vegetables + 3 chapatis",0] }
     };
     return profile==="arin" ? arin : aditi;
   }
@@ -595,39 +597,35 @@ Breakfast: ...</div>
   };
 
   function seedGrocery(){
-    return [
-      { t:"Paneer", c:"Dairy", done:false },
-      { t:"Eggs (12)", c:"Protein", done:false },
-      { t:"Tofu", c:"Protein", done:false },
-      { t:"Greek yogurt", c:"Dairy", done:false },
-      { t:"Milk", c:"Dairy", done:false },
-      { t:"Spinach", c:"Produce", done:false },
-      { t:"Tomatoes", c:"Produce", done:false },
-      { t:"Bananas", c:"Produce", done:false },
-      { t:"Rajma (kidney beans)", c:"Pantry", done:false },
-      { t:"Chickpeas", c:"Pantry", done:false },
-      { t:"Brown rice", c:"Pantry", done:false },
-      { t:"Rolled oats", c:"Pantry", done:false },
-      { t:"Almonds", c:"Pantry", done:false },
-      { t:"Atta (wheat flour)", c:"Pantry", done:false }
-    ];
+    function mk(list, cat){ return list.map(function(t){ return { t:t, c:cat, done:false }; }); }
+    return [].concat(
+      mk(["Paneer - 2 kg","Soya chunks - 500 g","Moong dal - 500 g","Rajma - 500 g","Chole - 500 g","Mixed dal - 1 kg","Milk - 8-10 L","Curd - 2 kg"], "Protein"),
+      mk(["Besan - 1 kg","Oats - 1 kg","Poha - 500 g","Peanut butter","Peanuts","Bananas","Apples","Chia seeds (optional)"], "Breakfast"),
+      mk(["Spinach","Tomatoes","Onions","Capsicum","Carrots","Cucumbers","Beans","Cauliflower","Seasonal vegetables","Coriander","Lemon","Ginger","Green chillies"], "Vegetables"),
+      mk(["Whole wheat flour","Rice"], "Carbs"),
+      mk(["Ghee","Almonds"], "Fats")
+    );
   }
 
   /* ---------- Render: hero stats + plate ---------- */
   function dayCalories(plan, day){
     var d = plan[day]; if(!d) return 0; var t=0;
-    MEAL_ORDER.forEach(function(m){ if(d[m] && typeof d[m][1]==="number") t+=d[m][1]; });
+    mealKeys(d).forEach(function(m){ if(typeof d[m][1]==="number") t+=d[m][1]; });
     return t;
   }
-  function avgKcal(plan){
-    var calDays=0, calSum=0;
-    DAYS.forEach(function(day){ var c=dayCalories(plan, day); if(c>0){ calSum+=c; calDays++; } });
-    return calDays ? Math.round(calSum/calDays) : 0;
+  function mealsPerDay(plan){
+    var days=0, meals=0;
+    DAYS.forEach(function(day){ var k=mealKeys(plan[day]); if(k.length){ days++; meals+=k.length; } });
+    return days ? Math.round(meals/days) : 0;
+  }
+  function daysPlanned(){
+    var set={};
+    PROFILES.forEach(function(pf){ DAYS.forEach(function(day){ if(mealKeys(state.plans[pf.id][day]).length) set[day]=1; }); });
+    return Object.keys(set).length;
   }
   function renderStats(){
-    var a=avgKcal(state.plans.aditi), b=avgKcal(state.plans.arin);
-    $("#statCalsA").textContent = a ? a.toLocaleString() : "\u2014";
-    $("#statCalsB").textContent = b ? b.toLocaleString() : "\u2014";
+    $("#statCalsA").textContent = mealsPerDay(state.plans.aditi) || "\u2014";
+    $("#statCalsB").textContent = mealsPerDay(state.plans.arin) || "\u2014";
     var left = state.groc.filter(function(g){ return !g.done; }).length;
     $("#statGroc").textContent = left;
   }
@@ -645,46 +643,27 @@ Breakfast: ...</div>
     });
   }
 
-  /* ---------- Comparator ---------- */
-  function fillFoodSelects(){
-    var a=$("#foodA"), b=$("#foodB");
-    FOODS.forEach(function(f,i){
-      var o1=el("option"); o1.value=i; o1.textContent=f.n; a.appendChild(o1);
-      var o2=el("option"); o2.value=i; o2.textContent=f.n; b.appendChild(o2.cloneNode(true)); b.appendChild(o2);
+  /* ---------- Portion difference: Arin vs Aditi ---------- */
+  function renderPortions(){
+    var wrap=$("#pcmp"); if(!wrap) return; wrap.innerHTML="";
+    PORTIONS.forEach(function(p){
+      var max=Math.max(p.av, p.dv) || 1;
+      var row=el("div","pcmp-row");
+      var food=el("div","pcmp-food"); food.textContent=p.food;
+      var bars=el("div","pcmp-bars");
+      [["arin","var(--mint)",p.av,p.arin],["aditi","var(--accent)",p.dv,p.aditi]].forEach(function(x){
+        var bar=el("div","pcmp-bar");
+        var track=el("div","pcmp-track");
+        var fill=el("div","pcmp-fill"); fill.style.background=x[1]; fill.style.width="0%";
+        track.appendChild(fill);
+        var amt=el("div","pcmp-amt"); amt.textContent=x[3];
+        bar.appendChild(track); bar.appendChild(amt);
+        bars.appendChild(bar);
+        requestAnimationFrame(function(){ fill.style.width=Math.max(6,(x[2]/max)*100)+"%"; });
+      });
+      row.appendChild(food); row.appendChild(bars);
+      wrap.appendChild(row);
     });
-    // careful: rebuild cleanly
-    a.innerHTML=""; b.innerHTML="";
-    FOODS.forEach(function(f,i){
-      var o1=el("option"); o1.value=i; o1.textContent=f.n; a.appendChild(o1);
-      var o2=el("option"); o2.value=i; o2.textContent=f.n; b.appendChild(o2);
-    });
-    a.value="0"; b.value="2";
-    a.onchange=renderBars; b.onchange=renderBars;
-  }
-  function renderBars(){
-    var fa=FOODS[+$("#foodA").value], fb=FOODS[+$("#foodB").value];
-    var max=Math.max(fa.kcal, fb.kcal), minH=70, maxH=210;
-    var bars=$("#bars"); bars.innerHTML="";
-    [fa,fb].forEach(function(f){
-      var h=minH + (f.kcal/max)*(maxH-minH);
-      var col=el("div","bar-col");
-      var val=el("div","bar-val num"); val.textContent=f.kcal;
-      var bar=el("div","bar3d"); bar.style.height="0px"; bar.style.background="linear-gradient(180deg, color-mix(in srgb,"+f.col+" 85%, #fff 0%), "+f.col+")";
-      var name=el("div","bar-name"); name.textContent=f.n;
-      var meta=el("div","bar-meta"); meta.textContent=f.serv;
-      col.appendChild(val); col.appendChild(bar); col.appendChild(name); col.appendChild(meta);
-      bars.appendChild(col);
-      requestAnimationFrame(function(){ bar.style.height=h+"px"; });
-    });
-    var diff=Math.abs(fa.kcal-fb.kcal);
-    var note;
-    if(diff<8){ note="Almost identical \u2014 about "+fa.kcal+" kcal per serving each."; }
-    else {
-      var more=fa.kcal>fb.kcal?fa:fb, less=fa.kcal>fb.kcal?fb:fa;
-      var x=(more.kcal/Math.max(less.kcal,1)).toFixed(1);
-      note="A serving of "+more.n+" packs "+diff+" more kcal \u2014 about "+x+"\u00D7 "+less.n+".";
-    }
-    $("#compNote").textContent=note;
   }
 
   /* ---------- Week: one row per day, both people side by side ---------- */
@@ -697,16 +676,14 @@ Breakfast: ...</div>
     head.innerHTML='<span class="pf-av" style="background:'+p.tint+'">'+p.initial+'</span>'+
       p.name+' <span class="pk">'+(cals?'<b class="num">'+cals.toLocaleString()+'</b> kcal':'')+'</span>';
     col.appendChild(head);
-    var any=false;
-    MEAL_ORDER.forEach(function(m){
-      if(!d[m] || !d[m][0]) return;
-      any=true;
+    var keys=mealKeys(d);
+    keys.forEach(function(m){
       var row=el("div","meal");
       row.innerHTML='<div class="mi">'+(MEAL_ICON[m]||"\u2022")+'</div>'+
-        '<div><div class="ml">'+m+'</div><div class="md">'+escapeHtml(d[m][0])+'</div></div>';
+        '<div><div class="ml">'+escapeHtml(m)+'</div><div class="md">'+escapeHtml(d[m][0])+'</div></div>';
       col.appendChild(row);
     });
-    if(!any){
+    if(!keys.length){
       var empty=el("div","meal");
       empty.innerHTML='<div class="mi">\u2022</div><div><div class="md empty">No meals yet &mdash; hit edit to add them.</div></div>';
       col.appendChild(empty);
@@ -715,10 +692,14 @@ Breakfast: ...</div>
   }
   function renderWeek(){
     var grid=$("#weekGrid"); grid.innerHTML="";
+    var n=0;
     DAYS.forEach(function(day,i){
+      var hasAny = mealKeys(state.plans.aditi[day]).length || mealKeys(state.plans.arin[day]).length;
+      if(!hasAny) return;   // skip days nobody has planned yet (e.g. Mon/Tue)
+      n++;
       var row=el("div","day-row");
       var head=el("div","day-row-head");
-      head.innerHTML='<span class="day-n">Day '+(i+1)+'</span><h3>'+day+'</h3><span class="dow">'+DOW[i]+'</span>';
+      head.innerHTML='<span class="day-n">Day '+n+'</span><h3>'+day+'</h3><span class="dow">'+DOW[i]+'</span>';
       row.appendChild(head);
       var persons=el("div","persons");
       persons.appendChild(personColumn(PROFILES[0], day));
@@ -726,6 +707,11 @@ Breakfast: ...</div>
       row.appendChild(persons);
       grid.appendChild(row);
     });
+    if(n===0){
+      var empty=el("div","day-row");
+      empty.innerHTML='<div class="day-row-head"><h3>No week planned yet</h3></div><div class="md empty" style="padding:4px">Hit the paste / edit button to add meals.</div>';
+      grid.appendChild(empty);
+    }
   }
   function escapeHtml(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
 
@@ -784,8 +770,7 @@ Breakfast: ...</div>
       var plan=state.plans[pf.id];
       DAYS.forEach(function(day){
         var d=plan[day]||{};
-        MEAL_ORDER.forEach(function(m){
-          if(!d[m]||!d[m][0]) return;
+        mealKeys(d).forEach(function(m){
           // pull nouns roughly: split on commas / '&' / 'with' / 'and'
           d[m][0].split(/,|&|\bwith\b|\band\b|\+/i).forEach(function(chunk){
             var item=chunk.replace(/\([^)]*\)/g,"").replace(/[0-9]+\s*(g|kcal|kg|ml|cup|cups)?/gi,"").trim();
@@ -811,14 +796,12 @@ Breakfast: ...</div>
   function planToText(plan){
     var out=[];
     DAYS.forEach(function(day,i){
-      var d=plan[day]; if(!d) return;
+      var d=plan[day]; var keys=mealKeys(d); if(!keys.length) return;
       out.push("Day "+(i+1)+" \u2014 "+day);
-      MEAL_ORDER.forEach(function(m){
-        if(d[m]&&d[m][0]){
-          var line=m+": "+d[m][0];
-          if(typeof d[m][1]==="number" && d[m][1]>0) line+=" ("+d[m][1]+" kcal)";
-          out.push(line);
-        }
+      keys.forEach(function(m){
+        var line=m+": "+d[m][0];
+        if(typeof d[m][1]==="number" && d[m][1]>0) line+=" ("+d[m][1]+" kcal)";
+        out.push(line);
       });
       out.push("");
     });
@@ -853,6 +836,7 @@ Breakfast: ...</div>
   }
   function normalizeMeal(s){
     s=s.trim().toLowerCase();
+    if(/brunch/.test(s)) return "Brunch";
     if(/break|morning/.test(s)) return "Breakfast";
     if(/lunch|noon|mid/.test(s)) return "Lunch";
     if(/dinner|supper|evening/.test(s)) return "Dinner";
@@ -969,7 +953,7 @@ Breakfast: ...</div>
   $("#groceryFromWeek").onclick=function(){ buildGroceryFromWeek(); document.getElementById("grocery").scrollIntoView({behavior:reduce?"auto":"smooth"}); };
 
   /* ---------- Init ---------- */
-  renderHands(); fillFoodSelects(); renderBars();
+  renderHands(); renderPortions();
   renderWeek(); renderGroc(); renderStats(); renderPlate();
 })();
 </script>
