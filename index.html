@@ -309,6 +309,10 @@
   .check.on { background: var(--accent); border-color: var(--accent); color: #06210f; }
   .gt { flex: 1; font-size: 14px; font-weight: 600; }
   .gcat { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-mute); background: var(--panel); border: 1px solid var(--line); padding: 3px 8px; border-radius: 999px; }
+  .groc-day { list-style: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 6px 6px; background: none !important; border: none !important; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-deep); }
+  :root[data-theme="dark"] .groc-day { color: var(--accent); }
+  .groc-list li.groc-day:first-child { padding-top: 2px; }
+  .groc-day-count { color: var(--ink-mute); font-weight: 700; }
   .del { background: none; border: none; color: var(--ink-mute); cursor: pointer; font-size: 17px; padding: 2px 6px; border-radius: 6px; transition: .15s; }
   .del:hover { color: var(--rose); background: color-mix(in srgb, var(--rose) 12%, transparent); }
   .groc-foot { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -460,8 +464,8 @@
     <div class="sec-head">
       <div>
         <span class="eyebrow">Grocery tracker</span>
-        <h2>One list, checked off as you shop.</h2>
-        <p>Add anything, tick it as it hits the cart. Saved in your browser so it's still here next time.</p>
+        <h2>Sorted by day, checked off as you shop.</h2>
+        <p>Bulk staples up top, then what each day needs. Tick items as they hit the cart &mdash; saved in your browser so it&rsquo;s still here next time.</p>
       </div>
     </div>
     <div class="groc">
@@ -478,7 +482,7 @@
       </div>
       <div class="card groc-panel">
         <div class="groc-add">
-          <input type="text" id="grocInput" placeholder="Add an item &mdash; e.g. Greek yogurt, 6 eggs, spinach&hellip;" aria-label="Add grocery item">
+          <input type="text" id="grocInput" placeholder="Add an item &mdash; e.g. paneer, curd, tomatoes&hellip;" aria-label="Add grocery item">
           <button class="btn btn-primary" id="grocAdd">Add</button>
         </div>
         <ul class="groc-list" id="grocList"></ul>
@@ -597,13 +601,16 @@ Breakfast: ...</div>
   };
 
   function seedGrocery(){
-    function mk(list, cat){ return list.map(function(t){ return { t:t, c:cat, done:false }; }); }
+    function mk(list, day){ return list.map(function(t){ return { t:t, day:day, done:false }; }); }
     return [].concat(
-      mk(["Paneer - 2 kg","Soya chunks - 500 g","Moong dal - 500 g","Rajma - 500 g","Chole - 500 g","Mixed dal - 1 kg","Milk - 8-10 L","Curd - 2 kg"], "Protein"),
-      mk(["Besan - 1 kg","Oats - 1 kg","Poha - 500 g","Peanut butter","Peanuts","Bananas","Apples","Chia seeds (optional)"], "Breakfast"),
-      mk(["Spinach","Tomatoes","Onions","Capsicum","Carrots","Cucumbers","Beans","Cauliflower","Seasonal vegetables","Coriander","Lemon","Ginger","Green chillies"], "Vegetables"),
-      mk(["Whole wheat flour","Rice"], "Carbs"),
-      mk(["Ghee","Almonds"], "Fats")
+      // Bulk staples used across the week
+      mk(["Paneer - 2 kg","Milk - 8-10 L","Whole wheat flour (atta)","Rice - 2 kg","Mixed dal - 1 kg","Curd - 2 kg","Bananas","Peanuts","Almonds","Ghee","Cooking oil","Onions","Tomatoes","Ginger","Green chillies","Coriander","Lemon","Spinach","Capsicum","Carrots","Beans","Cauliflower"], "Every day"),
+      // Day-specific items
+      mk(["Rajma - 500 g","Besan - 1 kg","Cucumber"], "Wednesday"),
+      mk(["Moong dal - 500 g","Chole - 500 g","Soya chunks - 500 g"], "Thursday"),
+      mk(["Oats - 1 kg","Peanut butter","Chia seeds (optional)","Apples"], "Friday"),
+      mk(["Extra mixed vegetables (for pulao)"], "Saturday"),
+      mk(["Poha - 500 g"], "Sunday")
     );
   }
 
@@ -724,22 +731,35 @@ Breakfast: ...</div>
     if(/rice|oat|pasta|bread|flour|atta|roti|almond|nut|oil|bean|rajma|chana|chickpea|chole|lentil|dal|quinoa|granola|makhana|poha|chocolate|hummus/.test(t)) return "Pantry";
     return "Other";
   }
+  var GROC_ORDER = ["Every day"].concat(DAYS).concat(["Extra"]);
+  var GROC_LABEL = { "Every day":"Every day \u00b7 buy in bulk", "Extra":"Extra (added by you)" };
+  function grocItemRow(g, idx){
+    var li=el("li", g.done?"done":"");
+    var chk=el("button","check"+(g.done?" on":"")); chk.setAttribute("aria-label","toggle"); chk.innerHTML=g.done?"\u2713":"";
+    chk.onclick=function(){ g.done=!g.done; persistGroc(); renderGroc(); renderStats(); };
+    var txt=el("span","gt"); txt.textContent=g.t;
+    var del=el("button","del"); del.innerHTML="\u2715"; del.setAttribute("aria-label","remove");
+    del.onclick=function(){ state.groc.splice(idx,1); persistGroc(); renderGroc(); renderStats(); };
+    li.appendChild(chk); li.appendChild(txt); li.appendChild(del);
+    return li;
+  }
   function renderGroc(){
     var list=$("#grocList"); list.innerHTML="";
     if(state.groc.length===0){
       var empty=el("li"); empty.style.justifyContent="center"; empty.style.color="var(--ink-mute)";
       empty.textContent="Your list is empty \u2014 add something above."; list.appendChild(empty);
+      renderRing(); return;
     }
-    state.groc.forEach(function(g,idx){
-      var li=el("li", g.done?"done":"");
-      var chk=el("button","check"+(g.done?" on":"")); chk.setAttribute("aria-label","toggle"); chk.innerHTML=g.done?"\u2713":"";
-      chk.onclick=function(){ g.done=!g.done; persistGroc(); renderGroc(); renderStats(); renderRing(); };
-      var txt=el("span","gt"); txt.textContent=g.t;
-      var cat=el("span","gcat"); cat.textContent=g.c||"Other";
-      var del=el("button","del"); del.innerHTML="\u2715"; del.setAttribute("aria-label","remove");
-      del.onclick=function(){ state.groc.splice(idx,1); persistGroc(); renderGroc(); renderStats(); renderRing(); };
-      li.appendChild(chk); li.appendChild(txt); li.appendChild(cat); li.appendChild(del);
-      list.appendChild(li);
+    // group by day, then render in week order
+    var groups={};
+    state.groc.forEach(function(g,idx){ var d=g.day||"Extra"; (groups[d]=groups[d]||[]).push({g:g, idx:idx}); });
+    GROC_ORDER.forEach(function(day){
+      var items=groups[day]; if(!items || !items.length) return;
+      var head=el("li","groc-day");
+      var done=items.filter(function(x){ return x.g.done; }).length;
+      head.innerHTML='<span>'+(GROC_LABEL[day]||day)+'</span><span class="groc-day-count num">'+done+'/'+items.length+'</span>';
+      list.appendChild(head);
+      items.forEach(function(x){ list.appendChild(grocItemRow(x.g, x.idx)); });
     });
     renderRing();
   }
@@ -759,25 +779,24 @@ Breakfast: ...</div>
     // allow comma-separated
     text.split(/,|\n/).forEach(function(part){
       part=part.trim(); if(!part) return;
-      state.groc.push({ t:part, c:guessCat(part), done:false });
+      state.groc.push({ t:part, day:"Extra", done:false });
     });
     persistGroc(); renderGroc(); renderStats();
   }
 
+  // Rebuild the list day-by-day from the plan (each ingredient filed under the first day it appears)
   function buildGroceryFromWeek(){
-    var found={};
-    PROFILES.forEach(function(pf){
-      var plan=state.plans[pf.id];
-      DAYS.forEach(function(day){
-        var d=plan[day]||{};
+    var found={};   // key -> {name, day}
+    DAYS.forEach(function(day){
+      PROFILES.forEach(function(pf){
+        var d=state.plans[pf.id][day]||{};
         mealKeys(d).forEach(function(m){
-          // pull nouns roughly: split on commas / '&' / 'with' / 'and'
           d[m][0].split(/,|&|\bwith\b|\band\b|\+/i).forEach(function(chunk){
-            var item=chunk.replace(/\([^)]*\)/g,"").replace(/[0-9]+\s*(g|kcal|kg|ml|cup|cups)?/gi,"").trim();
-            item=item.replace(/^(a|an|the|of|handful|homemade|big|grilled|roast|lean|fresh|masala|veg|veggie)\s+/i,"").trim();
-            if(item.length>2 && item.length<28){
+            var item=chunk.replace(/\([^)]*\)/g,"").replace(/[0-9]+\s*(g|kcal|kg|ml|cup|cups|tbsp|tsp)?/gi,"").trim();
+            item=item.replace(/^(a|an|the|of|handful|homemade|big|grilled|roast|lean|fresh|masala|veg|veggie|small|bowl|cooked|in)\s+/i,"").trim();
+            if(item.length>2 && item.length<32){
               var key=item.toLowerCase();
-              if(!found[key]) found[key]=item.charAt(0).toUpperCase()+item.slice(1);
+              if(!found[key]) found[key]={ name:item.charAt(0).toUpperCase()+item.slice(1), day:day };
             }
           });
         });
@@ -786,10 +805,10 @@ Breakfast: ...</div>
     var existing={}; state.groc.forEach(function(g){ existing[g.t.toLowerCase()]=true; });
     var added=0;
     Object.keys(found).forEach(function(k){
-      if(!existing[k]){ state.groc.push({ t:found[k], c:guessCat(found[k]), done:false }); added++; }
+      if(!existing[k]){ state.groc.push({ t:found[k].name, day:found[k].day, done:false }); added++; }
     });
     persistGroc(); renderGroc(); renderStats();
-    toast(added? ("Added "+added+" items from your week") : "Everything's already on your list");
+    toast(added? ("Added "+added+" items, sorted by day") : "Everything's already on your list");
   }
 
   /* ---------- Plan parser ---------- */
