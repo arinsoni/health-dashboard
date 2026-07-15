@@ -518,7 +518,7 @@ Breakfast: ...</div>
 <script>
 (function(){
   "use strict";
-  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v2", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
+  var LS = { plan:"fresh.plan.v2", groc:"fresh.groc.v3", theme:"fresh.theme.v1", profile:"fresh.profile.v1" };
   var PROFILES = [
     { id:"aditi", name:"Aditi", initial:"Ad", tint:"var(--accent)" },
     { id:"arin",  name:"Arin",  initial:"Ar", tint:"var(--mint)" }
@@ -594,12 +594,12 @@ Breakfast: ...</div>
   function seedGrocery(){
     function mk(list, day){ return list.map(function(t){ return { t:t, day:day, done:false }; }); }
     return [].concat(
-      // Bulk staples used across the week
-      mk(["Paneer - 2 kg","Milk - 8-10 L","Whole wheat flour (atta)","Rice - 2 kg","Mixed dal - 1 kg","Curd - 2 kg","Bananas","Peanuts","Almonds","Ghee","Cooking oil","Onions","Tomatoes","Ginger","Green chillies","Coriander","Lemon","Spinach","Capsicum","Carrots","Beans","Cauliflower"], "Every day"),
+      // Bulk staples used across the week (quantities sized for 2 people, 5 days)
+      mk(["Paneer - 1.5 kg","Milk - 5-6 L","Whole wheat flour (atta) - 1.5 kg","Rice - 1 kg","Mixed dal - 500 g","Curd - 1 kg","Bananas - 6","Peanuts - 250 g","Almonds - 250 g","Ghee - 250 g","Cooking oil - 1 L","Onions","Tomatoes","Ginger","Green chillies","Coriander","Lemon","Spinach","Capsicum","Carrots","Beans","Cauliflower"], "Every day"),
       // Day-specific items
-      mk(["Rajma - 500 g","Besan - 1 kg","Cucumber"], "Wednesday"),
-      mk(["Moong dal - 500 g","Chole - 500 g","Soya chunks - 500 g"], "Thursday"),
-      mk(["Oats - 1 kg","Peanut butter","Chia seeds (optional)","Apples"], "Friday"),
+      mk(["Rajma - 250 g","Besan - 500 g","Cucumber"], "Wednesday"),
+      mk(["Moong dal - 250 g","Chole - 300 g","Soya chunks - 200 g"], "Thursday"),
+      mk(["Oats - 500 g","Peanut butter","Chia seeds (optional)","Apples - 4"], "Friday"),
       mk(["Extra mixed vegetables (for pulao)"], "Saturday"),
       mk(["Poha - 500 g"], "Sunday")
     );
